@@ -57,7 +57,7 @@ if [ -z "$SEARCH_SERVICE_NAME" ]; then
     exit 1
 fi
 SEARCH_ENDPOINT="https://${SEARCH_SERVICE_NAME}.search.windows.net"
-SEARCH_ADMIN_KEY=$(az search admin-key show --resource-group "$RESOURCE_GROUP" --service-name "$SEARCH_SERVICE_NAME" --query primaryKey -o tsv)
+# SEARCH_ADMIN_KEY=$(az search admin-key show --resource-group "$RESOURCE_GROUP" --service-name "$SEARCH_SERVICE_NAME" --query primaryKey -o tsv)
 echo "✓ Azure AI Search: $SEARCH_SERVICE_NAME"
 
 # Get Azure OpenAI service
@@ -67,8 +67,23 @@ if [ -z "$OPENAI_SERVICE_NAME" ]; then
     exit 1
 fi
 OPENAI_ENDPOINT=$(az cognitiveservices account show --resource-group "$RESOURCE_GROUP" --name "$OPENAI_SERVICE_NAME" --query properties.endpoint -o tsv)
-OPENAI_KEY=$(az cognitiveservices account keys list --resource-group "$RESOURCE_GROUP" --name "$OPENAI_SERVICE_NAME" --query key1 -o tsv)
+# OPENAI_KEY=$(az cognitiveservices account keys list --resource-group "$RESOURCE_GROUP" --name "$OPENAI_SERVICE_NAME" --query key1 -o tsv)
 echo "✓ Azure OpenAI: $OPENAI_SERVICE_NAME"
+
+# Add current user identity to Cognitive Services resource group access policies (for AI Services)
+CURRENT_USER=$(az ad signed-in-user show --query userPrincipalName -o tsv)
+if [ -n "$CURRENT_USER" ]; then
+    echo "Adding current user ($CURRENT_USER) to Cognitive Services resource group access policies..."
+    if az role assignment create --assignee "$CURRENT_USER" --role "Cognitive Services User" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP" --output none; then
+        echo "✓ Added $CURRENT_USER to Cognitive Services User role for resource group"
+    else
+        echo "✗ Failed to add $CURRENT_USER to Cognitive Services User role"
+        echo "  You may need to manually add this role assignment in the Azure Portal"
+    fi
+else
+    echo "✗ Could not determine current user identity"
+    echo "  You may need to manually add your user to the Cognitive Services User role for the resource group in the Azure Portal"
+fi
 
 # Get AI Services (CognitiveServices kind)
 AI_SERVICE_NAME=$(az cognitiveservices account list --resource-group "$RESOURCE_GROUP" --query "[?kind=='CognitiveServices'].name | [0]" -o tsv)
@@ -77,8 +92,21 @@ if [ -z "$AI_SERVICE_NAME" ]; then
     exit 1
 fi
 AI_SERVICES_ENDPOINT=$(az cognitiveservices account show --resource-group "$RESOURCE_GROUP" --name "$AI_SERVICE_NAME" --query properties.endpoint -o tsv)
-AI_SERVICES_KEY=$(az cognitiveservices account keys list --resource-group "$RESOURCE_GROUP" --name "$AI_SERVICE_NAME" --query key1 -o tsv)
+# AI_SERVICES_KEY=$(az cognitiveservices account keys list --resource-group "$RESOURCE_GROUP" --name "$AI_SERVICE_NAME" --query key1 -o tsv)
 echo "✓ AI Services: $AI_SERVICE_NAME"
+# Add current user to AI Services resource access policies (for AI Services)
+if [ -n "$CURRENT_USER" ]; then
+    echo "Adding current user ($CURRENT_USER) to AI Services resource access policies..."
+    if az role assignment create --assignee "$CURRENT_USER" --role "Cognitive Services User" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CognitiveServices/accounts/$AI_SERVICE_NAME" --output none; then
+        echo "✓ Added $CURRENT_USER to Cognitive Services User role for AI Services resource"
+    else
+        echo "✗ Failed to add $CURRENT_USER to Cognitive Services User role for AI Services resource"
+        echo "  You may need to manually add this role assignment in the Azure Portal"
+    fi
+else
+    echo "✗ Could not determine current user identity"
+    echo "  You may need to manually add your user to the Cognitive Services User role for the AI Services resource in the Azure Portal"
+fi
 
 # Get Storage Account
 STORAGE_ACCOUNT_NAME=$(az storage account list --resource-group "$RESOURCE_GROUP" --query "[0].name" -o tsv)
@@ -88,6 +116,20 @@ if [ -z "$STORAGE_ACCOUNT_NAME" ]; then
 fi
 BLOB_CONNECTION_STRING=$(az storage account show-connection-string --resource-group "$RESOURCE_GROUP" --name "$STORAGE_ACCOUNT_NAME" --query connectionString -o tsv)
 echo "✓ Storage Account: $STORAGE_ACCOUNT_NAME"
+# add current user to Storage Account access policies (for Blob Storage)
+if [ -n "$CURRENT_USER" ]; then
+    echo "Adding current user ($CURRENT_USER) to Storage Account access policies..."
+    if az role assignment create --assignee "$CURRENT_USER" --role "Storage Blob Data Contributor" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Storage/storageAccounts/$STORAGE_ACCOUNT_NAME" --output none; then
+        echo "✓ Added $CURRENT_USER to Storage Blob Data Contributor role for Storage Account"
+    else
+        echo "✗ Failed to add $CURRENT_USER to Storage Blob Data Contributor role for Storage Account"
+        echo "  You may need to manually add this role assignment in the Azure Portal"
+    fi
+else
+    echo "✗ Could not determine current user identity"
+    echo "  You may need to manually add your user to the Storage Blob Data Contributor role"
+    echo "  for the Storage Account resource in the Azure Portal"
+fi
 
 # Create .env file
 echo ""
@@ -95,7 +137,7 @@ echo "Creating .env file..."
 
 ENV_CONTENT="# Azure AI Search Configuration
 AZURE_SEARCH_SERVICE_ENDPOINT=$SEARCH_ENDPOINT
-AZURE_SEARCH_ADMIN_KEY=$SEARCH_ADMIN_KEY
+# AZURE_SEARCH_ADMIN_KEY=$SEARCH_ADMIN_KEY
 
 # Azure Blob Storage Configuration
 BLOB_CONNECTION_STRING=$BLOB_CONNECTION_STRING
@@ -104,7 +146,7 @@ SEARCH_BLOB_DATASOURCE_CONNECTION_STRING=$BLOB_CONNECTION_STRING
 
 # Azure OpenAI Configuration
 AZURE_OPENAI_ENDPOINT=$OPENAI_ENDPOINT
-AZURE_OPENAI_KEY=$OPENAI_KEY
+# AZURE_OPENAI_KEY=$OPENAI_KEY
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-large
 AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large
 AZURE_OPENAI_CHATGPT_DEPLOYMENT=gpt-4.1
@@ -112,7 +154,7 @@ AZURE_OPENAI_CHATGPT_MODEL_NAME=gpt-4.1
 
 # Azure AI Services Configuration
 AI_SERVICES_ENDPOINT=$AI_SERVICES_ENDPOINT
-AI_SERVICES_KEY=$AI_SERVICES_KEY
+# AI_SERVICES_KEY=$AI_SERVICES_KEY
 
 # Knowledge Base Configuration
 AZURE_SEARCH_KNOWLEDGE_AGENT=knowledge-base
