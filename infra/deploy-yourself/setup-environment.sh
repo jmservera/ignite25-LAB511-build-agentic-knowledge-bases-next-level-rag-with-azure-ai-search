@@ -86,7 +86,7 @@ else
 fi
 
 # Get AI Services (CognitiveServices kind)
-AI_SERVICE_NAME=$(az cognitiveservices account list --resource-group "$RESOURCE_GROUP" --query "[?kind=='CognitiveServices'].name | [0]" -o tsv)
+AI_SERVICE_NAME=$(az cognitiveservices account list --resource-group "$RESOURCE_GROUP" --query "[?kind=='AIServices'].name | [0]" -o tsv)
 if [ -z "$AI_SERVICE_NAME" ]; then
     echo "✗ No AI Services found in resource group"
     exit 1
@@ -115,6 +115,9 @@ if [ -z "$STORAGE_ACCOUNT_NAME" ]; then
     exit 1
 fi
 BLOB_CONNECTION_STRING=$(az storage account show-connection-string --resource-group "$RESOURCE_GROUP" --name "$STORAGE_ACCOUNT_NAME" --query connectionString -o tsv)
+
+BLOB_RESOURCE_ID=$(az storage account show -g "$RESOURCE_GROUP" -n "$STORAGE_ACCOUNT_NAME" --query id -o tsv)
+
 echo "✓ Storage Account: $STORAGE_ACCOUNT_NAME"
 # add current user to Storage Account access policies (for Blob Storage)
 if [ -n "$CURRENT_USER" ]; then
@@ -143,6 +146,8 @@ AZURE_SEARCH_SERVICE_ENDPOINT=$SEARCH_ENDPOINT
 BLOB_CONNECTION_STRING=$BLOB_CONNECTION_STRING
 BLOB_CONTAINER_NAME=documents
 SEARCH_BLOB_DATASOURCE_CONNECTION_STRING=$BLOB_CONNECTION_STRING
+BLOB_RESOURCE_ID=$BLOB_RESOURCE_ID
+SEARCH_BLOB_DATASOURCE_RESOURCE_ID=$BLOB_RESOURCE_ID
 
 # Azure OpenAI Configuration
 AZURE_OPENAI_ENDPOINT=$OPENAI_ENDPOINT
