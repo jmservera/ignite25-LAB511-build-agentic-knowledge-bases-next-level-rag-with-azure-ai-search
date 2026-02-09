@@ -23,7 +23,6 @@ repo_root = script_dir.parent.parent
 
 # Azure AI Search configuration
 endpoint = os.environ.get("AZURE_SEARCH_SERVICE_ENDPOINT")
-# admin_key = os.environ.get("AZURE_SEARCH_ADMIN_KEY")
 azure_openai_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
 
 if not all([endpoint, azure_openai_endpoint]):
@@ -31,7 +30,7 @@ if not all([endpoint, azure_openai_endpoint]):
     print("   Make sure .env file exists with AZURE_SEARCH_SERVICE_ENDPOINT and AZURE_OPENAI_ENDPOINT")
     sys.exit(1)
 
-credential = DefaultAzureCredential() # AzureKeyCredential(admin_key)
+credential = DefaultAzureCredential()
 
 # Paths
 data_dir = repo_root / "data" / "index-data"
