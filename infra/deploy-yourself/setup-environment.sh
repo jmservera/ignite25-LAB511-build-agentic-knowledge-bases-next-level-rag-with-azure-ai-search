@@ -83,7 +83,7 @@ else
     echo "  You may need to manually add your user to the Cognitive Services User role for the resource group in the Azure Portal"
 fi
 
-# Get AI Services (CognitiveServices kind)
+# Get AI Services (AIServices kind)
 AI_SERVICE_NAME=$(az cognitiveservices account list --resource-group "$RESOURCE_GROUP" --query "[?kind=='AIServices'].name | [0]" -o tsv)
 if [ -z "$AI_SERVICE_NAME" ]; then
     echo "✗ No AI Services found in resource group"
