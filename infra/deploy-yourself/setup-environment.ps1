@@ -1,6 +1,8 @@
 param(
     [Parameter(Mandatory=$true)]
-    [string]$ResourceGroupName
+    [string]$ResourceGroupName,
+    [Parameter(Mandatory=$false)]
+    [bool]$Keyless=$false
 )
 
 $ErrorActionPreference = "Stop"
@@ -9,6 +11,10 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "LAB511 Environment Setup" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
+
+if ($Keyless) {
+    Write-Host "Keyless setup configured, keys will not be generated."
+}
 
 # Get repository root (2 levels up from this script)
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -35,6 +41,9 @@ try {
     }
     $searchService = $searchServices[0]
     $searchEndpoint = "https://$($searchService.name).search.windows.net"
+    if (-not $Keyless) {
+        $searchAdminKey = az search admin-key show --resource-group $ResourceGroupName --service-name $searchService.name --query primaryKey -o tsv
+    }
     
     Write-Host "✓ Azure AI Search: $($searchService.name)" -ForegroundColor Green
     
@@ -48,21 +57,26 @@ try {
     
     Write-Host "✓ Azure OpenAI: $($openAiService.name)" -ForegroundColor Green
     
-    # Add current user identity to Cognitive Services resource group access policies
     $currentUser = az ad signed-in-user show --query userPrincipalName -o tsv
-    if ($currentUser) {
-        Write-Host "Adding current user ($currentUser) to Cognitive Services resource group access policies..." -ForegroundColor Yellow
-        $subscriptionId = az account show --query id -o tsv
-        try {
-            az role assignment create --assignee $currentUser --role "Cognitive Services User" --scope "/subscriptions/$subscriptionId/resourceGroups/$ResourceGroupName" --output none
-            Write-Host "✓ Added $currentUser to Cognitive Services User role for resource group" -ForegroundColor Green
-        } catch {
-            Write-Host "✗ Failed to add $currentUser to Cognitive Services User role" -ForegroundColor Red
-            Write-Host "  You may need to manually add this role assignment in the Azure Portal" -ForegroundColor Yellow
-        }
+    $subscriptionId = az account show --query id -o tsv
+    
+    if (-not $Keyless) {
+        $openAiKey = az cognitiveservices account keys list --resource-group $ResourceGroupName --name $openAiService.name --query key1 -o tsv
     } else {
-        Write-Host "✗ Could not determine current user identity" -ForegroundColor Red
-        Write-Host "  You may need to manually add your user to the Cognitive Services User role for the resource group in the Azure Portal" -ForegroundColor Yellow
+        # Add current user identity to Cognitive Services resource group access policies (for AI Services)
+        if ($currentUser) {
+            Write-Host "Adding current user ($currentUser) to Cognitive Services resource group access policies..." -ForegroundColor Yellow
+            try {
+                az role assignment create --assignee $currentUser --role "Cognitive Services User" --scope "/subscriptions/$subscriptionId/resourceGroups/$ResourceGroupName" --output none
+                Write-Host "✓ Added $currentUser to Cognitive Services User role for resource group" -ForegroundColor Green
+            } catch {
+                Write-Host "✗ Failed to add $currentUser to Cognitive Services User role" -ForegroundColor Red
+                Write-Host "  You may need to manually add this role assignment in the Azure Portal" -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "✗ Could not determine current user identity" -ForegroundColor Red
+            Write-Host "  You may need to manually add your user to the Cognitive Services User role for the resource group in the Azure Portal" -ForegroundColor Yellow
+        }
     }
     
     # Get AI Services (AIServices kind)
@@ -75,19 +89,23 @@ try {
     
     Write-Host "✓ AI Services: $($aiService.name)" -ForegroundColor Green
     
-    # Add current user to AI Services resource access policies
-    if ($currentUser) {
-        Write-Host "Adding current user ($currentUser) to AI Services resource access policies..." -ForegroundColor Yellow
-        try {
-            az role assignment create --assignee $currentUser --role "Cognitive Services User" --scope "/subscriptions/$subscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.CognitiveServices/accounts/$($aiService.name)" --output none
-            Write-Host "✓ Added $currentUser to Cognitive Services User role for AI Services resource" -ForegroundColor Green
-        } catch {
-            Write-Host "✗ Failed to add $currentUser to Cognitive Services User role for AI Services resource" -ForegroundColor Red
-            Write-Host "  You may need to manually add this role assignment in the Azure Portal" -ForegroundColor Yellow
-        }
+    if (-not $Keyless) {
+        $aiServicesKey = az cognitiveservices account keys list --resource-group $ResourceGroupName --name $aiService.name --query key1 -o tsv
     } else {
-        Write-Host "✗ Could not determine current user identity" -ForegroundColor Red
-        Write-Host "  You may need to manually add your user to the Cognitive Services User role for the AI Services resource in the Azure Portal" -ForegroundColor Yellow
+        # Add current user to AI Services resource access policies
+        if ($currentUser) {
+            Write-Host "Adding current user ($currentUser) to AI Services resource access policies..." -ForegroundColor Yellow
+            try {
+                az role assignment create --assignee $currentUser --role "Cognitive Services User" --scope "/subscriptions/$subscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.CognitiveServices/accounts/$($aiService.name)" --output none
+                Write-Host "✓ Added $currentUser to Cognitive Services User role for AI Services resource" -ForegroundColor Green
+            } catch {
+                Write-Host "✗ Failed to add $currentUser to Cognitive Services User role for AI Services resource" -ForegroundColor Red
+                Write-Host "  You may need to manually add this role assignment in the Azure Portal" -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "✗ Could not determine current user identity" -ForegroundColor Red
+            Write-Host "  You may need to manually add your user to the Cognitive Services User role for the AI Services resource in the Azure Portal" -ForegroundColor Yellow
+        }
     }
     
     # Get Storage Account
@@ -97,25 +115,27 @@ try {
     }
     $storageAccount = $storageAccounts[0]
     $blobConnectionString = az storage account show-connection-string --resource-group $ResourceGroupName --name $storageAccount.name --query connectionString -o tsv
-    $blobResourceId = az storage account show -g $ResourceGroupName -n $storageAccount.name --query id -o tsv
+    
+    if ($Keyless) {
+        $blobResourceId = az storage account show -g $ResourceGroupName -n $storageAccount.name --query id -o tsv
+        # Add current user to Storage Account access policies (for Blob Storage)
+        if ($currentUser) {
+            Write-Host "Adding current user ($currentUser) to Storage Account access policies..." -ForegroundColor Yellow
+            try {
+                az role assignment create --assignee $currentUser --role "Storage Blob Data Contributor" --scope "/subscriptions/$subscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.Storage/storageAccounts/$($storageAccount.name)" --output none
+                Write-Host "✓ Added $currentUser to Storage Blob Data Contributor role for Storage Account" -ForegroundColor Green
+            } catch {
+                Write-Host "✗ Failed to add $currentUser to Storage Blob Data Contributor role for Storage Account" -ForegroundColor Red
+                Write-Host "  You may need to manually add this role assignment in the Azure Portal" -ForegroundColor Yellow
+            }
+        } else {
+            Write-Host "✗ Could not determine current user identity" -ForegroundColor Red
+            Write-Host "  You may need to manually add your user to the Storage Blob Data Contributor role" -ForegroundColor Yellow
+            Write-Host "  for the Storage Account resource in the Azure Portal" -ForegroundColor Yellow
+        }
+    }
     
     Write-Host "✓ Storage Account: $($storageAccount.name)" -ForegroundColor Green
-    
-    # Add current user to Storage Account access policies (for Blob Storage)
-    if ($currentUser) {
-        Write-Host "Adding current user ($currentUser) to Storage Account access policies..." -ForegroundColor Yellow
-        try {
-            az role assignment create --assignee $currentUser --role "Storage Blob Data Contributor" --scope "/subscriptions/$subscriptionId/resourceGroups/$ResourceGroupName/providers/Microsoft.Storage/storageAccounts/$($storageAccount.name)" --output none
-            Write-Host "✓ Added $currentUser to Storage Blob Data Contributor role for Storage Account" -ForegroundColor Green
-        } catch {
-            Write-Host "✗ Failed to add $currentUser to Storage Blob Data Contributor role for Storage Account" -ForegroundColor Red
-            Write-Host "  You may need to manually add this role assignment in the Azure Portal" -ForegroundColor Yellow
-        }
-    } else {
-        Write-Host "✗ Could not determine current user identity" -ForegroundColor Red
-        Write-Host "  You may need to manually add your user to the Storage Blob Data Contributor role" -ForegroundColor Yellow
-        Write-Host "  for the Storage Account resource in the Azure Portal" -ForegroundColor Yellow
-    }
     
 } catch {
     Write-Host "✗ Failed to retrieve Azure resources" -ForegroundColor Red
@@ -130,6 +150,7 @@ Write-Host "Creating .env file..." -ForegroundColor Yellow
 $envContent = @"
 # Azure AI Search Configuration
 AZURE_SEARCH_SERVICE_ENDPOINT=$searchEndpoint
+AZURE_SEARCH_ADMIN_KEY=$searchAdminKey
 
 # Azure Blob Storage Configuration
 BLOB_CONNECTION_STRING=$blobConnectionString
@@ -140,6 +161,7 @@ SEARCH_BLOB_DATASOURCE_RESOURCE_ID=$blobResourceId
 
 # Azure OpenAI Configuration
 AZURE_OPENAI_ENDPOINT=$openAiEndpoint
+AZURE_OPENAI_KEY=$openAiKey
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-large
 AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large
 AZURE_OPENAI_CHATGPT_DEPLOYMENT=gpt-4.1
@@ -147,10 +169,13 @@ AZURE_OPENAI_CHATGPT_MODEL_NAME=gpt-4.1
 
 # Azure AI Services Configuration
 AI_SERVICES_ENDPOINT=$aiServicesEndpoint
+AI_SERVICES_KEY=$aiServicesKey
 
 # Knowledge Base Configuration
 AZURE_SEARCH_KNOWLEDGE_AGENT=knowledge-base
 USE_VERBALIZATION=false
+
+KEYLESS=$Keyless
 "@
 
 $envPath = Join-Path $repoRoot ".env"
