@@ -113,7 +113,7 @@ else
     # Add current user to AI Services resource access policies (for AI Services)
     if [ -n "$CURRENT_USER" ]; then
         echo "Adding current user ($CURRENT_USER) to AI Services resource access policies..."
-        if $(az role assignment create --assignee "$CURRENT_USER" --role "Cognitive Services User" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CognitiveServices/accounts/$AI_SERVICE_NAME" --output none); then
+        if az role assignment create --assignee "$CURRENT_USER" --role "Cognitive Services User" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CognitiveServices/accounts/$AI_SERVICE_NAME" --output none; then
             echo "✓ Added $CURRENT_USER to Cognitive Services User role for AI Services resource"
         else
             echo "✗ Failed to add $CURRENT_USER to Cognitive Services User role for AI Services resource"
@@ -140,7 +140,7 @@ if [ -n "$KEYLESS" ]; then
     # add current user to Storage Account access policies (for Blob Storage)
     if [ -n "$CURRENT_USER" ]; then
         echo "Adding current user ($CURRENT_USER) to Storage Account access policies..."
-        if $(az role assignment create --assignee "$CURRENT_USER" --role "Storage Blob Data Contributor" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Storage/storageAccounts/$STORAGE_ACCOUNT_NAME" --output none); then
+        if az role assignment create --assignee "$CURRENT_USER" --role "Storage Blob Data Contributor" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Storage/storageAccounts/$STORAGE_ACCOUNT_NAME" --output none; then
             echo "✓ Added $CURRENT_USER to Storage Blob Data Contributor role for Storage Account"
         else
             echo "✗ Failed to add $CURRENT_USER to Storage Blob Data Contributor role for Storage Account"
