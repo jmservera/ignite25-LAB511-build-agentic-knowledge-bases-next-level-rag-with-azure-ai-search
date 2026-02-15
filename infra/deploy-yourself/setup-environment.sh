@@ -9,7 +9,7 @@ while getopts "g:h!:k!" opt; do
   case $opt in
     g) RESOURCE_GROUP="$OPTARG" ;;
     h)
-      echo "Usage: $0 -g <resource-group> [--keyless]"
+      echo "Usage: $0 -g <resource-group> [--k]"
       echo ""
       echo "Required:"
       echo "  -g  Resource group name"     
