@@ -22,7 +22,7 @@ param(
     [Parameter(Mandatory=$false)]
     [int]$Gpt41Capacity = 50,
     
-    [Parameter(Mandatory=$false)]
+    [Parameter(Mandatory=$false, HelpMessage="Optional tags in 'key=value' format, separated by spaces. E.g. 'env=dev project=lab511'")]
     [string]$Tags = ""
 )
 

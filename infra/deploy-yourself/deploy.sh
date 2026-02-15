@@ -30,7 +30,7 @@ while getopts "g:l:p:s:t:T:h" opt; do
       echo "  -p  Resource prefix (default: lab511)"
       echo "  -s  Search service SKU (default: standard)"
       echo "  -t  Storage account SKU (default: Standard_RAGRS)"
-      echo "  -T  JSON formatted tags for resource group (e.g., '{\"env\":\"dev\",\"project\":\"lab511\"}')"
+      echo "  -T  Space formatted tags for resource group (e.g., 'env=dev project=lab511')"
       echo "  -h  Show this help message"
       exit 0
       ;;
