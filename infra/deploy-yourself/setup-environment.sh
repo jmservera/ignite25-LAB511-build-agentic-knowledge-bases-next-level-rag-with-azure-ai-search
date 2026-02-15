@@ -113,7 +113,7 @@ else
     # Add current user to AI Services resource access policies (for AI Services)
     if [ -n "$CURRENT_USER" ]; then
         echo "Adding current user ($CURRENT_USER) to AI Services resource access policies..."
-        if az role assignment create --assignee "$CURRENT_USER" --role "Cognitive Services User" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CognitiveServices/accounts/$AI_SERVICE_NAME" --output none; then
+        if $(az role assignment create --assignee "$CURRENT_USER" --role "Cognitive Services User" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CognitiveServices/accounts/$AI_SERVICE_NAME" --output none); then
             echo "✓ Added $CURRENT_USER to Cognitive Services User role for AI Services resource"
         else
             echo "✗ Failed to add $CURRENT_USER to Cognitive Services User role for AI Services resource"
@@ -123,11 +123,12 @@ else
         echo "✗ Could not determine current user identity"
         echo "  You may need to manually add your user to the Cognitive Services User role for the AI Services resource in the Azure Portal"
     fi
+fi
 echo "✓ AI Services: $AI_SERVICE_NAME"
 # Add current user to AI Services resource access policies (for AI Services)
 if [ -n "$CURRENT_USER" ]; then
     echo "Adding current user ($CURRENT_USER) to AI Services resource access policies..."
-    if az role assignment create --assignee "$CURRENT_USER" --role "Cognitive Services User" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CognitiveServices/accounts/$AI_SERVICE_NAME" --output none; then
+    if $(az role assignment create --assignee "$CURRENT_USER" --role "Cognitive Services User" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CognitiveServices/accounts/$AI_SERVICE_NAME" --output none); then
         echo "✓ Added $CURRENT_USER to Cognitive Services User role for AI Services resource"
     else
         echo "✗ Failed to add $CURRENT_USER to Cognitive Services User role for AI Services resource"
@@ -138,20 +139,24 @@ else
     echo "  You may need to manually add your user to the Cognitive Services User role for the AI Services resource in the Azure Portal"
 fi
 
+echo "✓ AI Services role assigned to $CURRENT_USER"
+
 # Get Storage Account
+
 STORAGE_ACCOUNT_NAME=$(az storage account list --resource-group "$RESOURCE_GROUP" --query "[0].name" -o tsv)
 if [ -z "$STORAGE_ACCOUNT_NAME" ]; then
     echo "✗ No Storage Account found in resource group"
     exit 1
 fi
 BLOB_CONNECTION_STRING=$(az storage account show-connection-string --resource-group "$RESOURCE_GROUP" --name "$STORAGE_ACCOUNT_NAME" --query connectionString -o tsv)
+echo "✓ Storage Account: $STORAGE_ACCOUNT_NAME"
 
-if [ -n $KEYLESS]
+if [ -n "$KEYLESS" ]; then
     BLOB_RESOURCE_ID=$(az storage account show -g "$RESOURCE_GROUP" -n "$STORAGE_ACCOUNT_NAME" --query id -o tsv)
     # add current user to Storage Account access policies (for Blob Storage)
     if [ -n "$CURRENT_USER" ]; then
         echo "Adding current user ($CURRENT_USER) to Storage Account access policies..."
-        if az role assignment create --assignee "$CURRENT_USER" --role "Storage Blob Data Contributor" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Storage/storageAccounts/$STORAGE_ACCOUNT_NAME" --output none; then
+        if $(az role assignment create --assignee "$CURRENT_USER" --role "Storage Blob Data Contributor" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.Storage/storageAccounts/$STORAGE_ACCOUNT_NAME" --output none); then
             echo "✓ Added $CURRENT_USER to Storage Blob Data Contributor role for Storage Account"
         else
             echo "✗ Failed to add $CURRENT_USER to Storage Blob Data Contributor role for Storage Account"
@@ -163,8 +168,6 @@ if [ -n $KEYLESS]
         echo "  for the Storage Account resource in the Azure Portal"
     fi
 fi
-echo "✓ Storage Account: $STORAGE_ACCOUNT_NAME"
-
 
 # Create .env file
 echo ""
@@ -172,6 +175,7 @@ echo "Creating .env file..."
 
 ENV_CONTENT="# Azure AI Search Configuration
 AZURE_SEARCH_SERVICE_ENDPOINT=$SEARCH_ENDPOINT
+AZURE_SEARCH_ADMIN_KEY=$SEARCH_ADMIN_KEY
 
 # Azure Blob Storage Configuration
 BLOB_CONNECTION_STRING=$BLOB_CONNECTION_STRING
@@ -179,11 +183,10 @@ BLOB_CONTAINER_NAME=documents
 SEARCH_BLOB_DATASOURCE_CONNECTION_STRING=$BLOB_CONNECTION_STRING
 BLOB_RESOURCE_ID=$BLOB_RESOURCE_ID
 SEARCH_BLOB_DATASOURCE_RESOURCE_ID=$BLOB_RESOURCE_ID
-BLOB_RESOURCE_ID=$BLOB_RESOURCE_ID
-SEARCH_BLOB_DATASOURCE_RESOURCE_ID=$BLOB_RESOURCE_ID
 
 # Azure OpenAI Configuration
 AZURE_OPENAI_ENDPOINT=$OPENAI_ENDPOINT
+AZURE_OPENAI_KEY=$OPENAI_KEY
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT=text-embedding-3-large
 AZURE_OPENAI_EMBEDDING_MODEL_NAME=text-embedding-3-large
 AZURE_OPENAI_CHATGPT_DEPLOYMENT=gpt-4.1
@@ -191,6 +194,7 @@ AZURE_OPENAI_CHATGPT_MODEL_NAME=gpt-4.1
 
 # Azure AI Services Configuration
 AI_SERVICES_ENDPOINT=$AI_SERVICES_ENDPOINT
+AI_SERVICES_KEY=$AI_SERVICES_KEY
 
 # Knowledge Base Configuration
 AZURE_SEARCH_KNOWLEDGE_AGENT=knowledge-base
@@ -246,7 +250,9 @@ if [ ! -f "$REQUIREMENTS_PATH" ]; then
 fi
 
 cd "$REPO_ROOT"
+echo "  Upgrading pip..."
 "$VENV_PYTHON" -m pip install --upgrade pip --quiet
+echo "  Installing packages from requirements.txt..."
 "$VENV_PYTHON" -m pip install -r "$REQUIREMENTS_PATH" --quiet
 
 echo "✓ Dependencies installed"
