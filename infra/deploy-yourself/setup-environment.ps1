@@ -13,7 +13,7 @@ Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 if ($Keyless) {
-    Write-Host "Keyless setup configured, keys will not be generated."
+    Write-Host "Keyless setup configured, using Managed Identities and role-based access control instead of keys." -ForegroundColor Yellow
 }
 
 # Get repository root (2 levels up from this script)

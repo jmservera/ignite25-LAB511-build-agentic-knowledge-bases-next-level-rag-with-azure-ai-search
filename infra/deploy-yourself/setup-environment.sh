@@ -15,14 +15,14 @@ while getopts "g:h!:k!" opt; do
       echo "  -g  Resource group name"     
       echo ""
       echo "Optional:"
-      echo "  -k keyless. Forces use of Managed Identities"
+      echo "  -k  Keyless. Forces use of Managed Identities and role-based access control instead of keys"
       echo ""
       echo "  -h  Show this help message"
       exit 0
       ;;
     k)
       KEYLESS="True"
-      echo "Using keyless authentication, keys will not be generated"
+      echo "Using keyless authentication, using Managed Identities and role-based access control instead of keys."
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
@@ -67,7 +67,7 @@ if [ -z "$SEARCH_SERVICE_NAME" ]; then
     exit 1
 fi
 SEARCH_ENDPOINT="https://${SEARCH_SERVICE_NAME}.search.windows.net"
-if [ -z $KEYLESS]; then
+if [ -z "$KEYLESS" ]; then
     SEARCH_ADMIN_KEY=$(az search admin-key show --resource-group "$RESOURCE_GROUP" --service-name "$SEARCH_SERVICE_NAME" --query primaryKey -o tsv)
 fi
 echo "✓ Azure AI Search: $SEARCH_SERVICE_NAME"
@@ -80,7 +80,7 @@ if [ -z "$OPENAI_SERVICE_NAME" ]; then
 fi
 OPENAI_ENDPOINT=$(az cognitiveservices account show --resource-group "$RESOURCE_GROUP" --name "$OPENAI_SERVICE_NAME" --query properties.endpoint -o tsv)
 
-if [ -z $KEYLESS]; then
+if [ -z "$KEYLESS" ]; then
     OPENAI_KEY=$(az cognitiveservices account keys list --resource-group "$RESOURCE_GROUP" --name "$OPENAI_SERVICE_NAME" --query key1 -o tsv)
 else
     # Add current user identity to Cognitive Services resource group access policies (for AI Services)
@@ -107,7 +107,7 @@ if [ -z "$AI_SERVICE_NAME" ]; then
     exit 1
 fi
 AI_SERVICES_ENDPOINT=$(az cognitiveservices account show --resource-group "$RESOURCE_GROUP" --name "$AI_SERVICE_NAME" --query properties.endpoint -o tsv)
-if [ -z $KEYLESS]; then
+if [ -z "$KEYLESS" ]; then
     AI_SERVICES_KEY=$(az cognitiveservices account keys list --resource-group "$RESOURCE_GROUP" --name "$AI_SERVICE_NAME" --query key1 -o tsv)
 else
     # Add current user to AI Services resource access policies (for AI Services)

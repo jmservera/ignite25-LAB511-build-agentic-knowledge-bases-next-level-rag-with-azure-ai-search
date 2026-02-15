@@ -127,6 +127,8 @@ Write-Host ""
 Write-Host "Next Steps:" -ForegroundColor Yellow
 Write-Host "  1. Run the setup script to configure your environment:" -ForegroundColor White
 Write-Host "     .\setup-environment.ps1 -ResourceGroupName '$ResourceGroupName'" -ForegroundColor Gray
+Write-Host "    or if you want to use managed identities:" -ForegroundColor White
+Write-Host "     .\setup-environment.ps1 -ResourceGroupName '$ResourceGroupName' -Keyless $true" -ForegroundColor Gray
 Write-Host ""
 Write-Host "  2. Open the notebooks folder in VS Code:" -ForegroundColor White
 Write-Host "     cd ..\..\notebooks" -ForegroundColor Gray
