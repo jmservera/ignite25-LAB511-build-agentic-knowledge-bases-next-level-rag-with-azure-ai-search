@@ -20,7 +20,10 @@ param(
     [int]$EmbeddingModelCapacity = 30,
     
     [Parameter(Mandatory=$false)]
-    [int]$Gpt41Capacity = 50
+    [int]$Gpt41Capacity = 50,
+    
+    [Parameter(Mandatory=$false)]
+    [string]$Tags = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -72,7 +75,11 @@ try {
     if ($rgExists -eq "true") {
         Write-Host "✓ Resource group already exists" -ForegroundColor Green
     } else {
-        az group create --name $ResourceGroupName --location $Location --output none
+        if ($Tags) {
+            az group create --name $ResourceGroupName --location $Location --tags $Tags --output none
+        } else {
+            az group create --name $ResourceGroupName --location $Location --output none
+        }
         Write-Host "✓ Resource group created" -ForegroundColor Green
     }
 } catch {
