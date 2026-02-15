@@ -133,7 +133,6 @@ if [ -z "$STORAGE_ACCOUNT_NAME" ]; then
     exit 1
 fi
 BLOB_CONNECTION_STRING=$(az storage account show-connection-string --resource-group "$RESOURCE_GROUP" --name "$STORAGE_ACCOUNT_NAME" --query connectionString -o tsv)
-echo "✓ Storage Account: $STORAGE_ACCOUNT_NAME"
 
 if [ -n "$KEYLESS" ]; then
     # For keyless, we will use the Storage Account resource ID for role-based access control with Managed Identities
@@ -153,6 +152,7 @@ if [ -n "$KEYLESS" ]; then
         echo "  for the Storage Account resource in the Azure Portal"
     fi
 fi
+echo "✓ Storage Account: $STORAGE_ACCOUNT_NAME"
 
 # Create .env file
 echo ""

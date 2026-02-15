@@ -87,8 +87,6 @@ try {
     $aiService = $aiServices[0]
     $aiServicesEndpoint = $aiService.properties.endpoint
     
-    Write-Host "✓ AI Services: $($aiService.name)" -ForegroundColor Green
-    
     if (-not $Keyless) {
         $aiServicesKey = az cognitiveservices account keys list --resource-group $ResourceGroupName --name $aiService.name --query key1 -o tsv
     } else {
@@ -107,6 +105,7 @@ try {
             Write-Host "  You may need to manually add your user to the Cognitive Services User role for the AI Services resource in the Azure Portal" -ForegroundColor Yellow
         }
     }
+    Write-Host "✓ AI Services: $($aiService.name)" -ForegroundColor Green
     
     # Get Storage Account
     $storageAccounts = az storage account list --resource-group $ResourceGroupName --output json | ConvertFrom-Json
@@ -117,6 +116,7 @@ try {
     $blobConnectionString = az storage account show-connection-string --resource-group $ResourceGroupName --name $storageAccount.name --query connectionString -o tsv
     
     if ($Keyless) {
+        # For keyless, we will use the Storage Account resource ID for role-based access control with Managed Identities
         $blobResourceId = az storage account show -g $ResourceGroupName -n $storageAccount.name --query id -o tsv
         # Add current user to Storage Account access policies (for Blob Storage)
         if ($currentUser) {
@@ -134,7 +134,6 @@ try {
             Write-Host "  for the Storage Account resource in the Azure Portal" -ForegroundColor Yellow
         }
     }
-    
     Write-Host "✓ Storage Account: $($storageAccount.name)" -ForegroundColor Green
     
 } catch {
