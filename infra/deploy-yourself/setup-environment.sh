@@ -125,24 +125,8 @@ else
     fi
 fi
 echo "✓ AI Services: $AI_SERVICE_NAME"
-# Add current user to AI Services resource access policies (for AI Services)
-if [ -n "$CURRENT_USER" ]; then
-    echo "Adding current user ($CURRENT_USER) to AI Services resource access policies..."
-    if $(az role assignment create --assignee "$CURRENT_USER" --role "Cognitive Services User" --scope "/subscriptions/$(az account show --query id -o tsv)/resourceGroups/$RESOURCE_GROUP/providers/Microsoft.CognitiveServices/accounts/$AI_SERVICE_NAME" --output none); then
-        echo "✓ Added $CURRENT_USER to Cognitive Services User role for AI Services resource"
-    else
-        echo "✗ Failed to add $CURRENT_USER to Cognitive Services User role for AI Services resource"
-        echo "  You may need to manually add this role assignment in the Azure Portal"
-    fi
-else
-    echo "✗ Could not determine current user identity"
-    echo "  You may need to manually add your user to the Cognitive Services User role for the AI Services resource in the Azure Portal"
-fi
-
-echo "✓ AI Services role assigned to $CURRENT_USER"
 
 # Get Storage Account
-
 STORAGE_ACCOUNT_NAME=$(az storage account list --resource-group "$RESOURCE_GROUP" --query "[0].name" -o tsv)
 if [ -z "$STORAGE_ACCOUNT_NAME" ]; then
     echo "✗ No Storage Account found in resource group"
@@ -152,6 +136,7 @@ BLOB_CONNECTION_STRING=$(az storage account show-connection-string --resource-gr
 echo "✓ Storage Account: $STORAGE_ACCOUNT_NAME"
 
 if [ -n "$KEYLESS" ]; then
+    # For keyless, we will use the Storage Account resource ID for role-based access control with Managed Identities
     BLOB_RESOURCE_ID=$(az storage account show -g "$RESOURCE_GROUP" -n "$STORAGE_ACCOUNT_NAME" --query id -o tsv)
     # add current user to Storage Account access policies (for Blob Storage)
     if [ -n "$CURRENT_USER" ]; then
