@@ -10,6 +10,7 @@ from pathlib import Path
 from datetime import datetime
 from dotenv import load_dotenv
 from azure.identity import DefaultAzureCredential
+from azure.core.credentials import AzureKeyCredential
 from azure.search.documents.aio import SearchClient
 from azure.search.documents.indexes.aio import SearchIndexClient
 from azure.search.documents.indexes.models import SearchIndex
@@ -30,7 +31,11 @@ if not all([endpoint, azure_openai_endpoint]):
     print("   Make sure .env file exists with AZURE_SEARCH_SERVICE_ENDPOINT and AZURE_OPENAI_ENDPOINT")
     sys.exit(1)
 
-credential = DefaultAzureCredential()
+
+if os.getenv('KEYLESS','false').lower() == 'true':
+    credential = DefaultAzureCredential()
+else:
+    credential = AzureKeyCredential(os.environ["AZURE_SEARCH_ADMIN_KEY"])
 
 # Paths
 data_dir = repo_root / "data" / "index-data"
